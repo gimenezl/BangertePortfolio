@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
-import { RotateCw, Maximize2 } from 'lucide-react';
+import { RotateCw } from 'lucide-react';
 import type { HeroImage } from '@/lib/types';
 
 interface FloatingImagesProps {
@@ -63,7 +63,6 @@ export default function FloatingImages({ images }: FloatingImagesProps) {
     const [isAnimated, setIsAnimated] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
     const [activeId, setActiveId] = useState<string | null>(null);
-    const [hoveredId, setHoveredId] = useState<string | null>(null);
 
     // Action refs
     const actionRef = useRef<{
@@ -71,7 +70,7 @@ export default function FloatingImages({ images }: FloatingImagesProps) {
         id: string | null;
         startX: number;
         startY: number;
-        startValue: number; // For rotation: initial rotation, for resize: initial width
+        startValue: number;
         startImgX: number;
         startImgY: number;
     }>({
@@ -176,7 +175,7 @@ export default function FloatingImages({ images }: FloatingImagesProps) {
                     }
 
                     if (ref.type === 'rotate') {
-                        // Simple: horizontal drag = rotation
+                        // Horizontal drag = rotation
                         const newRotation = ref.startValue + dx * 0.5;
                         return { ...s, rotation: newRotation };
                     }
@@ -232,13 +231,11 @@ export default function FloatingImages({ images }: FloatingImagesProps) {
                 if (!image) return null;
 
                 const isActive = activeId === state.id;
-                const isHovered = hoveredId === state.id;
-                const showControls = isHovered || isActive;
 
                 return (
                     <div
                         key={state.id}
-                        className={`absolute ${isActive ? '' : 'transition-all duration-500 ease-out'}`}
+                        className={`absolute group ${isActive ? '' : 'transition-all duration-500 ease-out'}`}
                         style={{
                             left: state.x,
                             top: state.y,
@@ -249,10 +246,8 @@ export default function FloatingImages({ images }: FloatingImagesProps) {
                             opacity: isAnimated ? 1 : 0,
                             transitionDelay: isAnimated ? '0ms' : `${index * 100}ms`,
                         }}
-                        onMouseEnter={() => setHoveredId(state.id)}
-                        onMouseLeave={() => !isActive && setHoveredId(null)}
                     >
-                        {/* Image */}
+                        {/* Image - drag to move */}
                         <div
                             className={`relative w-full h-full cursor-grab active:cursor-grabbing overflow-hidden rounded shadow-lg ${isActive ? 'shadow-2xl shadow-cyan-500/30' : 'hover:shadow-xl'
                                 } transition-shadow duration-300`}
@@ -268,26 +263,24 @@ export default function FloatingImages({ images }: FloatingImagesProps) {
                             />
                         </div>
 
-                        {/* Aesthetic Controls - appear on hover */}
-                        <div className={`absolute -top-12 left-1/2 -translate-x-1/2 flex gap-2 transition-all duration-200 ${showControls ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2 pointer-events-none'
-                            }`}>
-                            {/* Rotate button */}
-                            <button
-                                className="w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full shadow-lg flex items-center justify-center cursor-grab active:cursor-grabbing hover:bg-white hover:scale-110 transition-all"
-                                onMouseDown={(e) => startAction(e, state.id, 'rotate')}
-                                title="Drag to rotate"
-                            >
-                                <RotateCw size={14} className="text-gray-700" />
-                            </button>
+                        {/* Rotate handle - TOP LEFT corner */}
+                        <div
+                            className="absolute -top-2 -left-2 w-6 h-6 bg-white rounded-full shadow-lg flex items-center justify-center cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 hover:scale-125 hover:bg-cyan-400 transition-all duration-200"
+                            onMouseDown={(e) => startAction(e, state.id, 'rotate')}
+                            title="Drag to rotate"
+                        >
+                            <RotateCw size={12} className="text-gray-700" />
+                        </div>
 
-                            {/* Resize button */}
-                            <button
-                                className="w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full shadow-lg flex items-center justify-center cursor-grab active:cursor-grabbing hover:bg-white hover:scale-110 transition-all"
-                                onMouseDown={(e) => startAction(e, state.id, 'resize')}
-                                title="Drag to resize"
-                            >
-                                <Maximize2 size={14} className="text-gray-700" />
-                            </button>
+                        {/* Resize handle - BOTTOM RIGHT corner */}
+                        <div
+                            className="absolute -bottom-2 -right-2 w-6 h-6 bg-white rounded-full shadow-lg cursor-se-resize opacity-0 group-hover:opacity-100 hover:scale-125 hover:bg-cyan-400 transition-all duration-200 flex items-center justify-center"
+                            onMouseDown={(e) => startAction(e, state.id, 'resize')}
+                            title="Drag to resize"
+                        >
+                            <svg width="10" height="10" viewBox="0 0 10 10" className="text-gray-700">
+                                <path d="M9 1L1 9M9 5L5 9M9 9L9 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                            </svg>
                         </div>
                     </div>
                 );
