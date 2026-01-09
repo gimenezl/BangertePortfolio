@@ -31,16 +31,16 @@ export default async function PortfolioPage() {
 
     return (
         <div className="min-h-screen bg-black text-white">
-            <div className="container-custom py-20 md:py-32 animate-fade-in">
-                <header className="mb-16">
-                    <h1 className="text-4xl md:text-6xl lg:text-7xl font-light mb-4 animate-slide-up">
+            <div className="container-custom py-12 md:py-20 lg:py-32 animate-fade-in">
+                <header className="mb-8 md:mb-16">
+                    <h1 className="text-2xl sm:text-3xl md:text-5xl lg:text-6xl xl:text-7xl font-light mb-4 animate-slide-up">
                         <span className="text-white/90">My Work</span>{' '}
-                        <span className="text-white/50">— and side experiments</span>
+                        <span className="text-white/50 block sm:inline">— and side experiments</span>
                     </h1>
                 </header>
 
                 {projects.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
                         {projects.map((project, index) => (
                             <div
                                 key={project.id}

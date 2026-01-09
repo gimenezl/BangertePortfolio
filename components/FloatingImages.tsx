@@ -59,8 +59,11 @@ export default function FloatingImages({ images }: FloatingImagesProps) {
                             // Use actual image aspect ratio
                             const naturalAspect = image.naturalHeight / image.naturalWidth;
 
-                            // Random base width (200-300px)
-                            const baseWidth = 200 + Math.random() * 100;
+                            // Smaller images on mobile
+                            const isMobile = containerWidth < 768;
+                            const baseWidth = isMobile
+                                ? 100 + Math.random() * 80  // 100-180px on mobile
+                                : 200 + Math.random() * 100; // 200-300px on desktop
                             const width = baseWidth;
                             const height = baseWidth * naturalAspect;
 
@@ -236,10 +239,10 @@ export default function FloatingImages({ images }: FloatingImagesProps) {
         >
             {/* Tagline with animation */}
             <div
-                className={`absolute top-8 left-8 md:top-12 md:left-12 z-50 text-white max-w-xl transition-all duration-1000 ease-out ${isAnimated ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'
+                className={`absolute top-6 left-4 right-4 sm:top-8 sm:left-8 md:top-12 md:left-12 z-50 text-white max-w-xl transition-all duration-1000 ease-out ${isAnimated ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'
                     }`}
             >
-                <h1 className="text-xl md:text-2xl font-normal leading-relaxed">
+                <h1 className="text-base sm:text-xl md:text-2xl font-normal leading-relaxed">
                     <span className="block">Ivana Bangerte /</span>
                     <span className="block">Advertising & Creative Professional.</span>
                     <span className="block">
@@ -291,29 +294,29 @@ export default function FloatingImages({ images }: FloatingImagesProps) {
                             </div>
                         </div>
 
-                        {/* Rotate button */}
+                        {/* Rotate button - hidden on touch devices */}
                         <button
-                            className="absolute -top-8 -left-2 w-6 h-6 bg-white rounded-full shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200 cursor-grab active:cursor-grabbing hover:bg-gray-100 hover:scale-110"
+                            className="absolute -top-8 -left-2 w-6 h-6 bg-white rounded-full shadow-lg items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200 cursor-grab active:cursor-grabbing hover:bg-gray-100 hover:scale-110 hidden md:flex"
                             onPointerDown={(e) => handlePointerDown(e, state.id, 'rotate')}
                         >
                             <RotateCcw size={14} className="text-gray-700" />
                         </button>
 
-                        {/* Resize handles with hover animations */}
+                        {/* Resize handles - hidden on touch devices */}
                         <div
-                            className="absolute -top-1.5 -left-1.5 w-3 h-3 bg-white rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-all duration-200 cursor-nw-resize hover:scale-125 hover:bg-blue-400"
+                            className="absolute -top-1.5 -left-1.5 w-3 h-3 bg-white rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-all duration-200 cursor-nw-resize hover:scale-125 hover:bg-blue-400 hidden md:block"
                             onPointerDown={(e) => handlePointerDown(e, state.id, 'resize-tl')}
                         />
                         <div
-                            className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-white rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-all duration-200 cursor-ne-resize hover:scale-125 hover:bg-blue-400"
+                            className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-white rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-all duration-200 cursor-ne-resize hover:scale-125 hover:bg-blue-400 hidden md:block"
                             onPointerDown={(e) => handlePointerDown(e, state.id, 'resize-tr')}
                         />
                         <div
-                            className="absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-white rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-all duration-200 cursor-sw-resize hover:scale-125 hover:bg-blue-400"
+                            className="absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-white rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-all duration-200 cursor-sw-resize hover:scale-125 hover:bg-blue-400 hidden md:block"
                             onPointerDown={(e) => handlePointerDown(e, state.id, 'resize-bl')}
                         />
                         <div
-                            className="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-white rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-all duration-200 cursor-se-resize hover:scale-125 hover:bg-blue-400"
+                            className="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-white rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-all duration-200 cursor-se-resize hover:scale-125 hover:bg-blue-400 hidden md:block"
                             onPointerDown={(e) => handlePointerDown(e, state.id, 'resize-br')}
                         />
                     </div>
