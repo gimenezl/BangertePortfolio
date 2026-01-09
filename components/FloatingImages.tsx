@@ -92,6 +92,7 @@ export default function FloatingImages({ images }: FloatingImagesProps) {
     const [isInitialized, setIsInitialized] = useState(false);
     const [isAnimated, setIsAnimated] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
+    const [activeImageId, setActiveImageId] = useState<string | null>(null); // Track which image is being dragged
 
     // Drag state - using refs to avoid re-renders during drag
     const isDragging = useRef(false);
@@ -197,6 +198,7 @@ export default function FloatingImages({ images }: FloatingImagesProps) {
         activeId.current = id;
         startPos.current = { x: e.clientX, y: e.clientY };
         startState.current = { ...state };
+        setActiveImageId(id); // Enable no-transition mode
 
         // For rotation, calculate initial angle
         if (mode === 'rotate') {
@@ -254,6 +256,7 @@ export default function FloatingImages({ images }: FloatingImagesProps) {
         dragMode.current = null;
         activeId.current = null;
         startState.current = null;
+        setActiveImageId(null); // Re-enable transitions for spring effect
         document.removeEventListener('mousemove', handleMouseMove);
         document.removeEventListener('mouseup', handleMouseUp);
     }, [handleMouseMove]);
@@ -303,10 +306,14 @@ export default function FloatingImages({ images }: FloatingImagesProps) {
                 const image = images.find((img) => img.id === state.id);
                 if (!image || !state.loaded) return null;
 
+                const isBeingDragged = activeImageId === state.id;
+
                 return (
                     <div
                         key={state.id}
-                        className={`absolute group transition-opacity duration-700 ${isAnimated ? 'opacity-100' : 'opacity-0'
+                        className={`absolute group ${isAnimated ? 'opacity-100' : 'opacity-0'} ${isBeingDragged
+                                ? '' // No transition during drag for performance
+                                : 'transition-all duration-300 ease-out' // Spring effect when released
                             }`}
                         style={{
                             left: state.x,
@@ -314,7 +321,7 @@ export default function FloatingImages({ images }: FloatingImagesProps) {
                             width: state.width,
                             height: state.height,
                             zIndex: state.zIndex,
-                            transform: `rotate(${state.rotation}deg)`,
+                            transform: `rotate(${state.rotation}deg) scale(${isBeingDragged ? 1.05 : 1})`,
                         }}
                     >
                         {/* Main image - drag to move */}
@@ -322,7 +329,8 @@ export default function FloatingImages({ images }: FloatingImagesProps) {
                             className="relative w-full h-full cursor-grab active:cursor-grabbing"
                             onMouseDown={(e) => handleMouseDown(e, state.id, 'move')}
                         >
-                            <div className="relative w-full h-full overflow-hidden shadow-xl rounded-sm hover:shadow-2xl transition-shadow">
+                            <div className={`relative w-full h-full overflow-hidden shadow-xl rounded-sm transition-all duration-200 ${isBeingDragged ? 'shadow-2xl' : 'group-hover:shadow-2xl group-hover:scale-[1.02]'
+                                }`}>
                                 <Image
                                     src={image.image_url}
                                     alt={image.alt_text || 'Portfolio image'}
