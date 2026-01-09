@@ -33,9 +33,12 @@ export default function ProjectsManagementPage() {
 
     const handleDelete = async (id: string) => {
         try {
-            const { error } = await supabase.from('projects').delete().eq('id', id);
+            const response = await fetch(`/api/admin/projects?id=${id}`, {
+                method: 'DELETE',
+            });
+            const data = await response.json();
 
-            if (error) throw error;
+            if (!response.ok) throw new Error(data.error || 'Failed to delete project');
 
             setProjects(projects.filter((p) => p.id !== id));
             setDeleteId(null);

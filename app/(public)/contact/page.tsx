@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Mail, Send, Copy, Check } from 'lucide-react';
 
-const EMAIL = 'bangerteivana@gmail.com';
+const EMAIL = 'xxxxx@gmail.com';
 
 export default function ContactPage() {
     const [copied, setCopied] = useState(false);
