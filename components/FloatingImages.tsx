@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
+import { RotateCw, Maximize2 } from 'lucide-react';
 import type { HeroImage } from '@/lib/types';
 
 interface FloatingImagesProps {
@@ -61,14 +62,24 @@ export default function FloatingImages({ images }: FloatingImagesProps) {
     const [maxZIndex, setMaxZIndex] = useState(10);
     const [isAnimated, setIsAnimated] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
-    const [draggingId, setDraggingId] = useState<string | null>(null);
+    const [activeId, setActiveId] = useState<string | null>(null);
+    const [hoveredId, setHoveredId] = useState<string | null>(null);
 
-    // Drag refs
-    const dragRef = useRef({
-        active: false,
-        id: null as string | null,
+    // Action refs
+    const actionRef = useRef<{
+        type: 'move' | 'rotate' | 'resize' | null;
+        id: string | null;
+        startX: number;
+        startY: number;
+        startValue: number; // For rotation: initial rotation, for resize: initial width
+        startImgX: number;
+        startImgY: number;
+    }>({
+        type: null,
+        id: null,
         startX: 0,
         startY: 0,
+        startValue: 0,
         startImgX: 0,
         startImgY: 0,
     });
@@ -123,41 +134,69 @@ export default function FloatingImages({ images }: FloatingImagesProps) {
         });
     }, [images, imageStates.length, isMobile]);
 
-    const handleMouseDown = (e: React.MouseEvent, id: string) => {
+    const bringToFront = (id: string) => {
+        const newZ = maxZIndex + 1;
+        setMaxZIndex(newZ);
+        setImageStates((prev) => prev.map((s) => (s.id === id ? { ...s, zIndex: newZ } : s)));
+    };
+
+    const startAction = (e: React.MouseEvent, id: string, type: 'move' | 'rotate' | 'resize') => {
         e.preventDefault();
+        e.stopPropagation();
+
         const state = imageStates.find((s) => s.id === id);
         if (!state) return;
 
-        dragRef.current = {
-            active: true,
+        actionRef.current = {
+            type,
             id,
             startX: e.clientX,
             startY: e.clientY,
+            startValue: type === 'rotate' ? state.rotation : state.width,
             startImgX: state.x,
             startImgY: state.y,
         };
 
-        setDraggingId(id);
-        setMaxZIndex((z) => z + 1);
-        setImageStates((prev) => prev.map((s) => (s.id === id ? { ...s, zIndex: maxZIndex + 1 } : s)));
+        setActiveId(id);
+        bringToFront(id);
 
         const handleMove = (ev: MouseEvent) => {
-            if (!dragRef.current.active) return;
-            const dx = ev.clientX - dragRef.current.startX;
-            const dy = ev.clientY - dragRef.current.startY;
+            const ref = actionRef.current;
+            if (!ref.type || !ref.id) return;
+
+            const dx = ev.clientX - ref.startX;
+            const dy = ev.clientY - ref.startY;
+
             setImageStates((prev) =>
-                prev.map((s) =>
-                    s.id === dragRef.current.id
-                        ? { ...s, x: dragRef.current.startImgX + dx, y: dragRef.current.startImgY + dy }
-                        : s
-                )
+                prev.map((s) => {
+                    if (s.id !== ref.id) return s;
+
+                    if (ref.type === 'move') {
+                        return { ...s, x: ref.startImgX + dx, y: ref.startImgY + dy };
+                    }
+
+                    if (ref.type === 'rotate') {
+                        // Simple: horizontal drag = rotation
+                        const newRotation = ref.startValue + dx * 0.5;
+                        return { ...s, rotation: newRotation };
+                    }
+
+                    if (ref.type === 'resize') {
+                        // Diagonal drag = resize
+                        const delta = (dx + dy) * 0.5;
+                        const newWidth = Math.max(100, Math.min(500, ref.startValue + delta));
+                        const newHeight = newWidth * s.aspectRatio;
+                        return { ...s, width: newWidth, height: newHeight };
+                    }
+
+                    return s;
+                })
             );
         };
 
         const handleUp = () => {
-            dragRef.current.active = false;
-            dragRef.current.id = null;
-            setDraggingId(null);
+            actionRef.current = { type: null, id: null, startX: 0, startY: 0, startValue: 0, startImgX: 0, startImgY: 0 };
+            setActiveId(null);
             document.removeEventListener('mousemove', handleMove);
             document.removeEventListener('mouseup', handleUp);
         };
@@ -192,28 +231,32 @@ export default function FloatingImages({ images }: FloatingImagesProps) {
                 const image = images.find((img) => img.id === state.id);
                 if (!image) return null;
 
-                const isDragging = draggingId === state.id;
+                const isActive = activeId === state.id;
+                const isHovered = hoveredId === state.id;
+                const showControls = isHovered || isActive;
 
                 return (
                     <div
                         key={state.id}
-                        className={`absolute cursor-grab active:cursor-grabbing ${isDragging ? '' : 'transition-[transform,box-shadow] duration-500 ease-out'
-                            }`}
+                        className={`absolute ${isActive ? '' : 'transition-all duration-500 ease-out'}`}
                         style={{
                             left: state.x,
                             top: state.y,
                             width: state.width,
                             height: state.height,
                             zIndex: state.zIndex,
-                            transform: `rotate(${state.rotation}deg) scale(${isDragging ? 1.08 : 1})`,
+                            transform: `rotate(${state.rotation}deg) scale(${isActive ? 1.05 : 1})`,
                             opacity: isAnimated ? 1 : 0,
                             transitionDelay: isAnimated ? '0ms' : `${index * 100}ms`,
                         }}
-                        onMouseDown={(e) => handleMouseDown(e, state.id)}
+                        onMouseEnter={() => setHoveredId(state.id)}
+                        onMouseLeave={() => !isActive && setHoveredId(null)}
                     >
+                        {/* Image */}
                         <div
-                            className={`relative w-full h-full overflow-hidden rounded shadow-lg transition-shadow duration-300 ${isDragging ? 'shadow-2xl shadow-white/20' : 'hover:shadow-xl'
-                                }`}
+                            className={`relative w-full h-full cursor-grab active:cursor-grabbing overflow-hidden rounded shadow-lg ${isActive ? 'shadow-2xl shadow-cyan-500/30' : 'hover:shadow-xl'
+                                } transition-shadow duration-300`}
+                            onMouseDown={(e) => startAction(e, state.id, 'move')}
                         >
                             <Image
                                 src={image.image_url}
@@ -223,6 +266,28 @@ export default function FloatingImages({ images }: FloatingImagesProps) {
                                 sizes="400px"
                                 draggable={false}
                             />
+                        </div>
+
+                        {/* Aesthetic Controls - appear on hover */}
+                        <div className={`absolute -top-12 left-1/2 -translate-x-1/2 flex gap-2 transition-all duration-200 ${showControls ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2 pointer-events-none'
+                            }`}>
+                            {/* Rotate button */}
+                            <button
+                                className="w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full shadow-lg flex items-center justify-center cursor-grab active:cursor-grabbing hover:bg-white hover:scale-110 transition-all"
+                                onMouseDown={(e) => startAction(e, state.id, 'rotate')}
+                                title="Drag to rotate"
+                            >
+                                <RotateCw size={14} className="text-gray-700" />
+                            </button>
+
+                            {/* Resize button */}
+                            <button
+                                className="w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full shadow-lg flex items-center justify-center cursor-grab active:cursor-grabbing hover:bg-white hover:scale-110 transition-all"
+                                onMouseDown={(e) => startAction(e, state.id, 'resize')}
+                                title="Drag to resize"
+                            >
+                                <Maximize2 size={14} className="text-gray-700" />
+                            </button>
                         </div>
                     </div>
                 );
