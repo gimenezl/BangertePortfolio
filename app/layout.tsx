@@ -8,12 +8,12 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Portfolio | Graphic Designer",
+  title: "Portfolio | Advertising & Creative Professional",
   description: "Creative portfolio showcasing graphic design work. Advertising & Creative Professional.",
   keywords: ["portfolio", "graphic design", "creative", "advertising", "visual design"],
   authors: [{ name: "Designer" }],
   openGraph: {
-    title: "Portfolio | Graphic Designer",
+    title: "Portfolio | Advertising & Creative Professional",
     description: "Creative portfolio showcasing graphic design work.",
     type: "website",
   },

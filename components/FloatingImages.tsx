@@ -24,6 +24,70 @@ interface ImageState {
 
 type DragMode = 'move' | 'rotate' | 'resize-tl' | 'resize-tr' | 'resize-bl' | 'resize-br' | null;
 
+// Mobile Grid Component - Clean static layout for touch devices
+function MobileLayout({ images }: { images: HeroImage[] }) {
+    const [isAnimated, setIsAnimated] = useState(false);
+
+    useEffect(() => {
+        setTimeout(() => setIsAnimated(true), 100);
+    }, []);
+
+    return (
+        <div className="min-h-screen bg-black text-white">
+            {/* Hero Section */}
+            <div className="px-6 pt-20 pb-8">
+                <div
+                    className={`transition-all duration-1000 ease-out ${isAnimated ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'
+                        }`}
+                >
+                    <h1 className="text-2xl font-light leading-relaxed mb-2">
+                        Ivana Bangerte /
+                    </h1>
+                    <p className="text-lg text-white/70 font-light">
+                        Advertising & Creative Professional.
+                    </p>
+                    <p className="text-lg text-white/50 font-light italic">
+                        Visually driven, culturally aware — a little surreal.
+                    </p>
+                </div>
+            </div>
+
+            {/* Image Grid - Masonry style */}
+            <div className="px-4 pb-8">
+                <div className="grid grid-cols-2 gap-3">
+                    {images.map((image, index) => (
+                        <div
+                            key={image.id}
+                            className={`relative overflow-hidden rounded-lg transition-all duration-700 ease-out ${isAnimated ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
+                                } ${index % 3 === 0 ? 'aspect-[4/5]' : 'aspect-square'}`}
+                            style={{
+                                transitionDelay: `${index * 100}ms`,
+                            }}
+                        >
+                            <Image
+                                src={image.image_url}
+                                alt={image.alt_text || 'Portfolio image'}
+                                fill
+                                className="object-cover"
+                                sizes="50vw"
+                            />
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            {/* Scroll hint */}
+            <div className="flex justify-center pb-8">
+                <div className="flex flex-col items-center text-white/30">
+                    <span className="text-xs uppercase tracking-widest mb-2">Scroll to explore</span>
+                    <div className="w-px h-8 bg-gradient-to-b from-white/30 to-transparent" />
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// Desktop Floating Images Component
 export default function FloatingImages({ images }: FloatingImagesProps) {
     const containerRef = useRef<HTMLDivElement>(null);
     const [imageStates, setImageStates] = useState<ImageState[]>([]);
@@ -34,15 +98,25 @@ export default function FloatingImages({ images }: FloatingImagesProps) {
     const [maxZIndex, setMaxZIndex] = useState(10);
     const [isInitialized, setIsInitialized] = useState(false);
     const [isAnimated, setIsAnimated] = useState(false);
+    const [isMobile, setIsMobile] = useState(false);
 
-    // Load image dimensions
+    // Check if mobile on mount and resize
     useEffect(() => {
-        if (images.length === 0 || isInitialized) return;
+        const checkMobile = () => {
+            setIsMobile(window.innerWidth < 768);
+        };
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
+
+    // Load image dimensions (only for desktop)
+    useEffect(() => {
+        if (images.length === 0 || isInitialized || isMobile) return;
 
         const container = containerRef.current;
         if (!container) return;
 
-        // Load all images to get their natural dimensions
         const loadImages = async () => {
             const containerWidth = container.offsetWidth;
             const containerHeight = container.offsetHeight;
@@ -56,18 +130,11 @@ export default function FloatingImages({ images }: FloatingImagesProps) {
                     return new Promise<ImageState>((resolve) => {
                         const image = new window.Image();
                         image.onload = () => {
-                            // Use actual image aspect ratio
                             const naturalAspect = image.naturalHeight / image.naturalWidth;
-
-                            // Smaller images on mobile
-                            const isMobile = containerWidth < 768;
-                            const baseWidth = isMobile
-                                ? 100 + Math.random() * 80  // 100-180px on mobile
-                                : 200 + Math.random() * 100; // 200-300px on desktop
+                            const baseWidth = 200 + Math.random() * 100;
                             const width = baseWidth;
                             const height = baseWidth * naturalAspect;
 
-                            // Position in cluster
                             const angle = (index / images.length) * Math.PI * 2 + Math.random() * 0.5;
                             const radius = Math.random() * clusterWidth * 0.35;
                             const x = clusterCenterX + Math.cos(angle) * radius - width / 2;
@@ -89,7 +156,6 @@ export default function FloatingImages({ images }: FloatingImagesProps) {
                             });
                         };
                         image.onerror = () => {
-                            // Fallback for failed loads
                             const baseWidth = 220;
                             const height = baseWidth * 0.75;
                             const angle = (index / images.length) * Math.PI * 2;
@@ -120,7 +186,7 @@ export default function FloatingImages({ images }: FloatingImagesProps) {
         };
 
         loadImages();
-    }, [images, isInitialized]);
+    }, [images, isInitialized, isMobile]);
 
     const bringToFront = useCallback((id: string) => {
         setMaxZIndex((prev) => prev + 1);
@@ -134,24 +200,19 @@ export default function FloatingImages({ images }: FloatingImagesProps) {
     const handlePointerDown = (e: React.PointerEvent, id: string, mode: DragMode) => {
         e.preventDefault();
         e.stopPropagation();
-
-        const state = imageStates.find((s) => s.id === id);
-        if (!state) return;
-
         setActiveId(id);
         setDragMode(mode);
         setDragStart({ x: e.clientX, y: e.clientY });
-        setInitialState({ ...state });
-        bringToFront(id);
-
+        const state = imageStates.find((s) => s.id === id);
+        if (state) {
+            setInitialState(state);
+            bringToFront(id);
+        }
         (e.target as HTMLElement).setPointerCapture(e.pointerId);
     };
 
     const handlePointerMove = (e: React.PointerEvent) => {
         if (!activeId || !dragMode || !initialState) return;
-
-        const container = containerRef.current;
-        if (!container) return;
 
         const deltaX = e.clientX - dragStart.x;
         const deltaY = e.clientY - dragStart.y;
@@ -161,53 +222,50 @@ export default function FloatingImages({ images }: FloatingImagesProps) {
                 if (state.id !== activeId) return state;
 
                 if (dragMode === 'move') {
-                    const containerRect = container.getBoundingClientRect();
-                    const newX = Math.max(0, Math.min(initialState.x + deltaX, containerRect.width - state.width));
-                    const newY = Math.max(0, Math.min(initialState.y + deltaY, containerRect.height - state.height));
-                    return { ...state, x: newX, y: newY };
+                    return {
+                        ...state,
+                        x: initialState.x + deltaX,
+                        y: initialState.y + deltaY,
+                    };
                 }
 
                 if (dragMode === 'rotate') {
                     const centerX = initialState.x + initialState.width / 2;
                     const centerY = initialState.y + initialState.height / 2;
-
                     const startAngle = Math.atan2(dragStart.y - centerY, dragStart.x - centerX);
                     const currentAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX);
-                    const angleDelta = (currentAngle - startAngle) * (180 / Math.PI);
-
-                    return { ...state, rotation: initialState.rotation + angleDelta };
+                    const deltaAngle = (currentAngle - startAngle) * (180 / Math.PI);
+                    return {
+                        ...state,
+                        rotation: initialState.rotation + deltaAngle,
+                    };
                 }
 
-                if (dragMode?.startsWith('resize')) {
+                if (dragMode.startsWith('resize')) {
                     let newWidth = initialState.width;
-                    let newHeight = initialState.height;
                     let newX = initialState.x;
+
+                    if (dragMode.includes('r')) {
+                        newWidth = Math.max(100, initialState.width + deltaX);
+                    } else if (dragMode.includes('l')) {
+                        newWidth = Math.max(100, initialState.width - deltaX);
+                        newX = initialState.x + (initialState.width - newWidth);
+                    }
+
+                    const newHeight = newWidth * initialState.aspectRatio;
                     let newY = initialState.y;
 
-                    // Use the image's real aspect ratio
-                    const aspectRatio = initialState.aspectRatio;
-                    const minSize = 100;
-                    const maxSize = 600;
-
-                    if (dragMode === 'resize-br') {
-                        newWidth = Math.max(minSize, Math.min(maxSize, initialState.width + deltaX));
-                        newHeight = newWidth * aspectRatio;
-                    } else if (dragMode === 'resize-bl') {
-                        newWidth = Math.max(minSize, Math.min(maxSize, initialState.width - deltaX));
-                        newHeight = newWidth * aspectRatio;
-                        newX = initialState.x + (initialState.width - newWidth);
-                    } else if (dragMode === 'resize-tr') {
-                        newWidth = Math.max(minSize, Math.min(maxSize, initialState.width + deltaX));
-                        newHeight = newWidth * aspectRatio;
-                        newY = initialState.y + (initialState.height - newHeight);
-                    } else if (dragMode === 'resize-tl') {
-                        newWidth = Math.max(minSize, Math.min(maxSize, initialState.width - deltaX));
-                        newHeight = newWidth * aspectRatio;
-                        newX = initialState.x + (initialState.width - newWidth);
+                    if (dragMode.includes('t')) {
                         newY = initialState.y + (initialState.height - newHeight);
                     }
 
-                    return { ...state, width: newWidth, height: newHeight, x: newX, y: newY };
+                    return {
+                        ...state,
+                        width: newWidth,
+                        height: newHeight,
+                        x: newX,
+                        y: newY,
+                    };
                 }
 
                 return state;
@@ -220,6 +278,11 @@ export default function FloatingImages({ images }: FloatingImagesProps) {
         setDragMode(null);
         setInitialState(null);
     };
+
+    // Show mobile layout on small screens
+    if (isMobile) {
+        return <MobileLayout images={images} />;
+    }
 
     if (images.length === 0) {
         return (
@@ -239,10 +302,10 @@ export default function FloatingImages({ images }: FloatingImagesProps) {
         >
             {/* Tagline with animation */}
             <div
-                className={`absolute top-6 left-4 right-4 sm:top-8 sm:left-8 md:top-12 md:left-12 z-50 text-white max-w-xl transition-all duration-1000 ease-out ${isAnimated ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'
+                className={`absolute top-12 left-12 z-50 text-white max-w-xl transition-all duration-1000 ease-out ${isAnimated ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'
                     }`}
             >
-                <h1 className="text-base sm:text-xl md:text-2xl font-normal leading-relaxed">
+                <h1 className="text-2xl font-normal leading-relaxed">
                     <span className="block">Ivana Bangerte /</span>
                     <span className="block">Advertising & Creative Professional.</span>
                     <span className="block">
@@ -272,16 +335,15 @@ export default function FloatingImages({ images }: FloatingImagesProps) {
                             height: state.height,
                             zIndex: state.zIndex,
                             transform: `rotate(${state.rotation}deg)`,
-                            transitionDelay: isAnimated ? '0ms' : `${state.animationDelay * 1000}ms`,
+                            transitionDelay: `${state.animationDelay}s`,
+                            cursor: isActive && dragMode === 'move' ? 'grabbing' : 'grab',
                         }}
+                        onPointerDown={(e) => handlePointerDown(e, state.id, 'move')}
                     >
-                        {/* Image container */}
                         <div
-                            className={`relative w-full h-full cursor-grab select-none transition-all duration-200 ${dragMode === 'move' && isActive ? 'cursor-grabbing scale-105' : 'hover:scale-[1.02]'
+                            className={`relative w-full h-full transition-transform duration-200 ${isActive ? 'scale-105' : 'group-hover:scale-[1.02]'
                                 }`}
-                            onPointerDown={(e) => handlePointerDown(e, state.id, 'move')}
                         >
-                            {/* Image with proper aspect ratio */}
                             <div className="relative w-full h-full overflow-hidden shadow-xl rounded-sm">
                                 <Image
                                     src={image.image_url}
@@ -294,36 +356,34 @@ export default function FloatingImages({ images }: FloatingImagesProps) {
                             </div>
                         </div>
 
-                        {/* Rotate button - hidden on touch devices */}
+                        {/* Rotate button */}
                         <button
-                            className="absolute -top-8 -left-2 w-6 h-6 bg-white rounded-full shadow-lg items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200 cursor-grab active:cursor-grabbing hover:bg-gray-100 hover:scale-110 hidden md:flex"
+                            className="absolute -top-8 -left-2 w-6 h-6 bg-white rounded-full shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200 cursor-grab active:cursor-grabbing hover:bg-gray-100 hover:scale-110"
                             onPointerDown={(e) => handlePointerDown(e, state.id, 'rotate')}
                         >
                             <RotateCcw size={14} className="text-gray-700" />
                         </button>
 
-                        {/* Resize handles - hidden on touch devices */}
+                        {/* Resize handles */}
                         <div
-                            className="absolute -top-1.5 -left-1.5 w-3 h-3 bg-white rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-all duration-200 cursor-nw-resize hover:scale-125 hover:bg-blue-400 hidden md:block"
+                            className="absolute -top-1.5 -left-1.5 w-3 h-3 bg-white rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-all duration-200 cursor-nw-resize hover:scale-125 hover:bg-blue-400"
                             onPointerDown={(e) => handlePointerDown(e, state.id, 'resize-tl')}
                         />
                         <div
-                            className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-white rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-all duration-200 cursor-ne-resize hover:scale-125 hover:bg-blue-400 hidden md:block"
+                            className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-white rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-all duration-200 cursor-ne-resize hover:scale-125 hover:bg-blue-400"
                             onPointerDown={(e) => handlePointerDown(e, state.id, 'resize-tr')}
                         />
                         <div
-                            className="absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-white rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-all duration-200 cursor-sw-resize hover:scale-125 hover:bg-blue-400 hidden md:block"
+                            className="absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-white rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-all duration-200 cursor-sw-resize hover:scale-125 hover:bg-blue-400"
                             onPointerDown={(e) => handlePointerDown(e, state.id, 'resize-bl')}
                         />
                         <div
-                            className="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-white rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-all duration-200 cursor-se-resize hover:scale-125 hover:bg-blue-400 hidden md:block"
+                            className="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-white rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-all duration-200 cursor-se-resize hover:scale-125 hover:bg-blue-400"
                             onPointerDown={(e) => handlePointerDown(e, state.id, 'resize-br')}
                         />
                     </div>
                 );
             })}
-
-            {/* Footer is now handled by the layout */}
         </div>
     );
 }
